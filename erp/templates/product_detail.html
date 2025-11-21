@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="row">
+  <div class="col-md-8">
+    <h3>{{ product.name }}</h3>
+    <p><strong>SKU:</strong> {{ product.sku }}<br>
+       <strong>Barcode:</strong> {{ product.barcode }}</p>
+    <p><strong>Price:</strong> {{ product.sale_price }} | <strong>Qty:</strong> {{ product.quantity }}</p>
+  </div>
+  <div class="col-md-4">
+    {% if product.barcode_image %}
+      <img src="{{ product.barcode_image.url }}" alt="Barcode" class="img-fluid">
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

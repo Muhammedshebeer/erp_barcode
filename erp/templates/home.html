@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row mb-3">
+  <div class="col-md-8">
+    <h3>Products</h3>
+  </div>
+  <div class="col-md-4">
+    <div class="input-group">
+      <input id="searchBarcode" type="text" class="form-control" placeholder="Scan or type barcode and press Enter" autofocus>
+      <button id="searchBtn" class="btn btn-primary">Search</button>
+    </div>
+  </div>
+</div>
+
+<table class="table table-striped">
+  <thead><tr><th>Name</th><th>SKU</th><th>Stock</th><th>Price</th><th>Barcode</th></tr></thead>
+  <tbody>
+    {% for p in products %}
+    <tr>
+      <td><a href="{% url 'product_detail' p.pk %}">{{ p.name }}</a></td>
+      <td>{{ p.sku }}</td>
+      <td>{{ p.stock }}</td>
+      <td>{{ p.price }}</td>
+      <td>{% if p.barcode_image %}<img class="barcode-img" src="{{ p.barcode_image.url }}">{% endif %}</td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="5">No products</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('searchBarcode').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    doSearch();
+  }
+});
+document.getElementById('searchBtn').addEventListener('click', doSearch);
+function doSearch(){
+  const q = document.getElementById('searchBarcode').value.trim();
+  if (!q) return;
+  fetch(`/api/search/?q=${encodeURIComponent(q)}`).then(r=>r.json()).then(js=>{
+    if (js.ok) {
+      window.location = `/product/${js.id}/`;
+    } else {
+      alert('Not found');
+    }
+  });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Inventory ERP{% endblock %}</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    /* small extra spacing */
+    .table-small td, .table-small th { padding: .4rem .6rem; }
+    .nav-link.active { font-weight:600 }
+  </style>
+</head>
+<body>
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+  <div class="container">
+    <a class="navbar-brand" href="{% url 'dashboard' %}">InventoryERP</a>
+    <div class="collapse navbar-collapse">
+      <ul class="navbar-nav ms-auto">
+        <li class="nav-item"><a class="nav-link" href="{% url 'product_list' %}">Products</a></li>
+        <li class="nav-item"><a class="nav-link" href="{% url 'add_stock' %}">Add Stock</a></li>
+        <li class="nav-item"><a class="nav-link" href="{% url 'create_sale' %}">Create Sale</a></li>
+        <li class="nav-item"><a class="nav-link" href="/admin/">Admin</a></li>
+      </ul>
+    </div>
+  </div>
+</nav>
+<div class="container my-4">
+  {% block content %}{% endblock %}
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>
