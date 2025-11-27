@@ -23,11 +23,76 @@
         <td>{{ p.quantity }}</td>
         <td>{{ p.sale_price }}</td>
         <td>{{ p.barcode }}</td>
-        <td><a class="btn btn-sm btn-primary" href="{% url 'product_detail' p.pk %}">View</a></td>
+        <td><a class="btn btn-sm btn-primary" href="{% url 'product_detail' p.pk %}">View</a>
+          <button class="btn btn-sm btn-warning"
+        data-bs-toggle="modal"
+        data-bs-target="#editModal"
+        onclick="loadProductData('{{ p.pk }}', '{{ p.name }}', '{{ p.price }}', '{{ p.quantity }}', '{{ p.sku }}')">
+    Edit
+</button>
+        <a class="btn btn-sm btn-primary" href="{% url 'delete_product' p.pk %}">Delete</a></td>
+
       </tr>
     {% empty %}
       <tr><td colspan="6">No products</td></tr>
     {% endfor %}
   </tbody>
 </table>
+
+
+<!-- Edit Product Modal -->
+<div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h5 class="modal-title">Edit Product</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="px-3 pt-2">
+    <h4 id="edit-sku" class="text-primary"></h4>
+</div>
+
+      <form method="POST" action="{% url 'edit_product' %}">
+        {% csrf_token %}
+
+        <div class="modal-body">
+            <input type="hidden" id="edit-id" name="id">
+
+            <div class="mb-3">
+                <label>Name</label>
+                <input type="text" id="edit-name" name="name" class="form-control">
+            </div>
+
+            <div class="mb-3">
+                <label>Price</label>
+                <input type="number" id="edit-price" name="price" class="form-control">
+            </div>
+
+<!--            <div class="mb-3">-->
+<!--                <label>Quantity</label>-->
+<!--                <input type="number" id="edit-qty" name="quantity" class="form-control">-->
+<!--            </div>-->
+        </div>
+
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-success">Save Changes</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+
+      </form>
+
+    </div>
+  </div>
+</div>
+
 {% endblock %}
+<script>
+function loadProductData(id, name, price, quantity) {
+    document.getElementById("edit-id").value = id;
+    document.getElementById("edit-name").value = name;
+    document.getElementById("edit-price").value = price;
+    document.getElementById("edit-qty").value = quantity;
+    document.getElementById("edit-sku").innerHTML = "SKU: " + sku;
+}
+</script>

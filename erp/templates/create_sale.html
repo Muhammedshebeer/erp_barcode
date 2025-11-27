@@ -18,7 +18,11 @@
   </div>
 
   <table class="table" id="items-table">
-    <thead><tr><th>Product</th><th>Price</th><th>Qty</th><th>Subtotal</th><th></th></tr></thead>
+    <thead>
+      <tr>
+        <th>Product</th><th>Price</th><th>Qty</th><th>Subtotal</th><th></th>
+      </tr>
+    </thead>
     <tbody></tbody>
   </table>
 
@@ -35,86 +39,82 @@
     <button class="btn btn-success">Save Sale</button>
   </div>
 </form>
+
+<!-- Pass products to JS -->
+<script type="application/json" id="products-data">
+{{ products|safe|json_script:"products-data" }}
+</script>
 {% endblock %}
 
 {% block scripts %}
-
 <script>
-const products = JSON.parse(document.getElementById('products-data').textContent); // list of products
-let lineIndex = 0;
-
-function createRow(productId=null, price=0, qty=1){
-    const tbody = document.querySelector('#items-table tbody');
-    const tr = document.createElement('tr');
-
-    tr.innerHTML = `
-    <td>
-      <select name="item-product-${lineIndex}" class="form-select form-select-sm product-select">
-        ${products.map(p => `<option value="${p.id}" ${productId==p.id ? 'selected' : ''}>${p.name}</option>`).join('')}
-
-      </select>
-    </td>
-    <td><input name="item-price-${lineIndex}" value="${price}" class="form-control form-control-sm price-input"></td>
-    <td><input name="item-qty-${lineIndex}" value="${qty}" class="form-control form-control-sm qty-input"></td>
-    <td class="subtotal-cell">0.00</td>
-    <td><button type="button" class="btn btn-sm btn-danger remove-row">x</button></td>
-    `;
-    tbody.appendChild(tr);
-
-    // Event listeners
-    tr.querySelector('.remove-row').addEventListener('click', ()=>{
-        tr.remove();
-        computeTotals();
-    });
-    tr.querySelector('.price-input').addEventListener('input', computeTotals);
-    tr.querySelector('.qty-input').addEventListener('input', computeTotals);
-    tr.querySelector('.product-select').addEventListener('change', function(){
-        const selected = products.find(p => p.id == this.value);
-        if (selected) tr.querySelector('.price-input').value = selected.price;
-        computeTotals();
-    });
-
-    lineIndex++;
-    computeTotals();
-}
-
 function computeTotals(){
     let total = 0;
     document.querySelectorAll('#items-table tbody tr').forEach(tr=>{
         const price = parseFloat(tr.querySelector('.price-input').value || 0);
         const qty = parseInt(tr.querySelector('.qty-input').value || 0);
-        const subtotal = (price * qty) || 0;
+        const subtotal = price * qty;
         tr.querySelector('.subtotal-cell').innerText = subtotal.toFixed(2);
         total += subtotal;
     });
     document.getElementById('total').innerText = total.toFixed(2);
 }
 
-// Add initial empty row
-document.getElementById('add-row').addEventListener('click', ()=> createRow());
+// Add or update product row function
+function addOrUpdateRow(product){
+    const tbody = document.querySelector('#items-table tbody');
+    const lineIndex = tbody.children.length; // dynamic index
 
-// Barcode scanning: enter -> lookup via AJAX
+    const tr = document.createElement('tr');
+    tr.dataset.productId = product.id;
+    tr.innerHTML = `
+        <td>
+            ${product.name}
+            <input type="hidden" name="item-product-${lineIndex}" value="${product.id}">
+        </td>
+        <td>
+            <input type="number" class="form-control form-control-sm price-input" name="item-price-${lineIndex}" value="${product.sale_price}">
+        </td>
+        <td>
+            <input type="number" class="form-control form-control-sm qty-input" name="item-qty-${lineIndex}" value="1">
+        </td>
+        <td class="subtotal-cell">${product.sale_price.toFixed(2)}</td>
+        <td>
+            <button type="button" class="btn btn-sm btn-danger remove-row">x</button>
+        </td>
+    `;
+    tbody.appendChild(tr);
+
+    // Event listeners
+    tr.querySelector('.remove-row').addEventListener('click', ()=>{ tr.remove(); computeTotals(); });
+    tr.querySelector('.price-input').addEventListener('input', computeTotals);
+    tr.querySelector('.qty-input').addEventListener('input', computeTotals);
+
+    computeTotals();
+}
+// Barcode input listener
 document.getElementById('barcode-input').addEventListener('keypress', function(e){
-    if (e.key === 'Enter'){
+    if(e.key === 'Enter'){
         e.preventDefault();
         const barcode = this.value.trim();
-        if (!barcode) return;
+        if(!barcode) return;
 
         fetch(`/ajax/lookup-barcode/?barcode=${encodeURIComponent(barcode)}`)
             .then(r => r.json())
             .then(data => {
-                if (data.ok){
-                    // data.id = product id, data.sale_price = price
-                    createRow(data.id, data.sale_price, 1);
+                if(data.ok){
+                    addOrUpdateRow(data); // pass the product JSON directly
                     this.value = '';
                 } else {
                     alert(data.error || 'Product not found');
                 }
-            }).catch(err => {
-                alert('Lookup failed');
-            });
+            }).catch(err => alert('Lookup failed'));
     }
 });
+
+// Optional: initial row button
+document.getElementById('add-row').addEventListener('click', ()=>{ /* you can reuse createRow here if needed */ });
+
 </script>
 {% endblock %}
 

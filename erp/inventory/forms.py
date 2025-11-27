@@ -1,5 +1,8 @@
 from django import forms
-from .models import Product, StockEntry, Sale, SaleItem
+from django.core.exceptions import ValidationError
+
+from .models import Product, StockEntry, Sale, SaleItem, Employee
+
 
 class ProductForm(forms.ModelForm):
     class Meta:
@@ -21,3 +24,22 @@ class SaleItemForm(forms.ModelForm):
     class Meta:
         model = SaleItem
         fields = ['product','qty','price','subtotal']
+
+
+class EmployeeForm(forms.ModelForm):
+    confirm_password = forms.CharField(widget=forms.PasswordInput)
+
+    class Meta:
+        model = Employee
+        fields = ['name', 'email', 'mob', 'username', 'password', 'confirm_password']
+        widgets = {
+            'password': forms.PasswordInput(),
+        }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        password = cleaned_data.get("password")
+        confirm_password = cleaned_data.get("confirm_password")
+
+        if password != confirm_password:
+            raise ValidationError("Passwords do not match!")

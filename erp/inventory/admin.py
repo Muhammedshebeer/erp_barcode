@@ -1,9 +1,16 @@
 from django.contrib import admin
-from .models import Category, Supplier, Product, StockEntry, Sale, SaleItem
+from .models import Category, Supplier, Product, StockEntry, Sale, SaleItem, Employee
+
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
     list_display = ('name',)
+
+@admin.register(Employee)
+class EmployeeAdmin(admin.ModelAdmin):
+    list_display = ('name','email','mob','username')
+
+
 
 @admin.register(Supplier)
 class SupplierAdmin(admin.ModelAdmin):

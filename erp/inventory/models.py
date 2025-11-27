@@ -1,6 +1,24 @@
 from django.db import models
 from django.urls import reverse
 from django.utils import timezone
+from django.core.exceptions import ValidationError
+
+
+class Employee(models.Model):
+    name = models.CharField(max_length=100)
+    email = models.EmailField()
+    mob = models.BigIntegerField()
+    username = models.CharField(max_length=100, unique=True)
+    password = models.CharField(max_length=100)
+    confirm_password = models.CharField(max_length=100)
+
+    def clean(self):
+        # This method is called before saving
+        if self.password != self.confirm_password:
+            raise ValidationError("Passwords do not match!")
+
+    def __str__(self):
+        return self.name
 
 class Category(models.Model):
     name = models.CharField(max_length=100, unique=True)
