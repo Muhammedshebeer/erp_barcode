@@ -1,6 +1,9 @@
 import json
 
 from django.contrib import messages
+from django.contrib.auth import authenticate, login, logout
+from django.core.paginator import Paginator
+from django.db.models import Q
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
@@ -9,12 +12,13 @@ from django.db import transaction
 from .models import Product, StockEntry, Sale, SaleItem, Employee
 from .forms import ProductForm, StockEntryForm, SaleForm, EmployeeForm
 from .utils import generate_barcode_image, generate_barcodes_pdf
-
+from django.template.loader import render_to_string
+from django.http import HttpResponse
+from xhtml2pdf import pisa
 from django.conf import settings
 from django.core.serializers.json import DjangoJSONEncoder
 from decimal import Decimal
 from django.http import FileResponse
-
 
 
 def login_view(request):
@@ -22,19 +26,22 @@ def login_view(request):
         username = request.POST.get("username")
         password = request.POST.get("password")
 
-        try:
-            user = Employee.objects.get(username=username, password=password)
-            request.session['user_id'] = user.id  # store session
-            return redirect('home')
+        # Use Django's authenticate function
+        user = authenticate(request, username=username, password=password)
 
-        except Employee.DoesNotExist:
+        if user is not None:
+            login(request, user)  # sets session automatically
+
+            Employee.objects.get_or_create(user=user)
+            return redirect('home')
+        else:
             messages.error(request, "Invalid username or password")
             return redirect('login')
 
     return render(request, 'login.html')
 
 def logout_view(request):
-    request.session.flush()  # clears all session data
+    logout(request)  # clears Django session automatically
     return redirect('login')
 
 
@@ -107,24 +114,52 @@ def product_detail(request, pk):
 # @login_required
 def add_stock(request):
     if request.method == "POST":
-        form = StockEntryForm(request.POST)
-        if form.is_valid():
-            entry = form.save()
-            # update product quantity
-            p = entry.product
-            p.quantity = p.quantity + entry.qty
-            p.save()
-            return redirect('product_list')
-    else:
-        form = StockEntryForm()
+        product_id = request.POST.get("product_id")
+
+        if not product_id:
+            messages.error(request, "Please select a valid product.")
+            return redirect("add_stock")
+
+        product = Product.objects.get(id=product_id)
+
+        # Create manually because product is not in the form anymore
+        entry = StockEntry.objects.create(
+            product=product,
+            qty=request.POST.get("qty"),
+            purchase_price=request.POST.get("purchase_price"),
+            supplier_id=request.POST.get("supplier") or None,
+            remarks=request.POST.get("remarks")
+        )
+
+        # update product quantity
+        product.quantity = product.quantity + entry.qty
+        product.save()
+
+        return redirect('product_list')
+
+    form = StockEntryForm()
     return render(request, 'add_stock.html', {'form': form})
+
+def product_search(request):
+    q = request.GET.get('q', '')
+
+    products = Product.objects.filter(
+        Q(name__icontains=q) |
+        Q(sku__icontains=q)
+    )
+
+    data = {
+        "results": [
+            {"id": p.id, "text": f"{p.name} ({p.sku})"}
+            for p in products
+        ]
+    }
+
+    return JsonResponse(data)
 
 # @login_required
 # @transaction.atomic
 def create_sale(request):
-    """
-    Handles sale creation with dynamic items (item-product-0, item-qty-0, item-price-0, etc.)
-    """
     if request.method == "POST":
         sale_form = SaleForm(request.POST)
         if sale_form.is_valid():
@@ -134,7 +169,6 @@ def create_sale(request):
             sale.total = Decimal('0.00')
             sale.save()
 
-            # parse sale items
             i = 0
             while True:
                 pid = request.POST.get(f'item-product-{i}')
@@ -148,17 +182,14 @@ def create_sale(request):
                 price = Decimal(price)
                 subtotal = price * qty
 
-                # Create SaleItem
-                si = SaleItem(
+                SaleItem.objects.create(
                     sale=sale,
                     product=product,
                     qty=qty,
                     price=price,
                     subtotal=subtotal
                 )
-                si.save()
 
-                # Reduce stock
                 product.quantity -= qty
                 product.save()
 
@@ -166,18 +197,44 @@ def create_sale(request):
                 i += 1
 
             sale.save()
-            return redirect('sale_detail', pk=sale.pk)
+            return redirect('sale_detail',pk=sale.pk)
     else:
         sale_form = SaleForm()
 
-    # Prepare products data for JS (for dynamic rows & barcode lookup)
+    # Prepare products
     products_qs = Product.objects.all()
     products = list(products_qs.values('id', 'name', 'sale_price', 'barcode', 'quantity'))
 
+    sales = Sale.objects.all().order_by('-created_at')  # newest first
+
+    paginator = Paginator(sales, 10)  # 10 per page
+    page_number = request.GET.get("page")
+    sales_page = paginator.get_page(page_number)
+
     return render(request, 'create_sale.html', {
         'form': sale_form,
-        'products': products
+        'products': products,
+        'sales': sales,
     })
+
+
+def sale_pdf(request, pk):
+    sale = Sale.objects.get(pk=pk)
+    html = render_to_string('sale_pdf.html', {'sale': sale})
+
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{sale.invoice_no}.pdf"'
+
+    pisa_status = pisa.CreatePDF(html, dest=response)
+    if pisa_status.err:
+        return HttpResponse('Error generating PDF', status=500)
+    return response
+
+
+def sale_detail_modal(request, pk):
+    sale = get_object_or_404(Sale, pk=pk)
+    return render(request, 'sale_detail_modal.html', {'sale': sale})
+
 # @login_required
 def sale_detail(request, pk):
     sale = get_object_or_404(Sale, pk=pk)

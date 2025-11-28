@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 'inventory',
     'widget_tweaks',
+'django_select2',
 ]
 
 STATIC_URL = '/static/'

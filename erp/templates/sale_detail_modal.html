@@ -1,0 +1,26 @@
+<h6>Invoice: {{ sale.invoice_no }}</h6>
+<h6>Customer: {{sale.customer_name}}</h6>
+<p>Date: {{ sale.created_at }}</p>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Item</th>
+            <th>Qty</th>
+            <th>Price</th>
+            <th>Total</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in sale.items.all %}
+        <tr>
+            <td>{{ item.product }}</td>
+            <td>{{ item.qty }}</td>
+            <td>{{ item.price }}</td>
+            <td>{{ item.subtotal }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<p><strong>Grand Total:</strong> {{ sale.total }}</p>

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #000; padding: 5px; text-align: left; }
+        th { background: #eee; }
+    </style>
+</head>
+<body>
+    <h2>Invoice: {{ sale.invoice_no }}</h2>
+    <p>Date: {{ sale.created_at|date:"Y-m-d H:i" }}</p>
+    <p>Customer: {{ sale.customer_name }}</p>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Product</th><th>Price</th><th>Qty</th><th>Subtotal</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for item in sale.items.all %}
+            <tr>
+                <td>{{ item.product.name }}</td>
+                <td>{{ item.price }}</td>
+                <td>{{ item.qty }}</td>
+                <td>{{ item.subtotal }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+    <h3>Total: {{ sale.total }}</h3>
+</body>
+</html>

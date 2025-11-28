@@ -8,8 +8,9 @@ class CategoryAdmin(admin.ModelAdmin):
 
 @admin.register(Employee)
 class EmployeeAdmin(admin.ModelAdmin):
-    list_display = ('name','email','mob','username')
-
+    # Update list_display to match your new fields
+    list_display = ('id', 'name', 'age', 'email', 'mob')  # only fields that exist
+    search_fields = ('name', 'email', 'mob')
 
 
 @admin.register(Supplier)

@@ -1,3 +1,4 @@
+from django.contrib.auth.models import User
 from django.db import models
 from django.urls import reverse
 from django.utils import timezone
@@ -5,17 +6,19 @@ from django.core.exceptions import ValidationError
 
 
 class Employee(models.Model):
-    name = models.CharField(max_length=100)
-    email = models.EmailField()
-    mob = models.BigIntegerField()
-    username = models.CharField(max_length=100, unique=True)
-    password = models.CharField(max_length=100)
-    confirm_password = models.CharField(max_length=100)
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    name = models.CharField(max_length=100, blank=True, null=True)
+    age = models.IntegerField(blank=True, null=True)
+    image = models.ImageField(upload_to='employees/', blank=True, null=True)
+    address = models.CharField(max_length=250, blank=True, null=True)
+    email = models.EmailField(blank=True, null=True)
+    mob = models.BigIntegerField(blank=True, null=True)
 
-    def clean(self):
-        # This method is called before saving
-        if self.password != self.confirm_password:
-            raise ValidationError("Passwords do not match!")
+    def save(self, *args, **kwargs):
+        # Set name to user.username if name is empty
+        if not self.name and self.user:
+            self.name = self.user.username
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.name
@@ -75,6 +78,8 @@ class StockEntry(models.Model):
 
     def __str__(self):
         return f"StockEntry {self.product} +{self.qty}"
+
+
 
 class Sale(models.Model):
     invoice_no = models.CharField(max_length=50, unique=True)

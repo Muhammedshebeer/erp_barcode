@@ -1,6 +1,6 @@
 from django import forms
 from django.core.exceptions import ValidationError
-
+from django_select2.forms import ModelSelect2Widget, Select2Widget
 from .models import Product, StockEntry, Sale, SaleItem, Employee
 
 
@@ -10,9 +10,34 @@ class ProductForm(forms.ModelForm):
         fields = ['sku','name','category','supplier','cost_price','sale_price','barcode','quantity']
 
 class StockEntryForm(forms.ModelForm):
+    product_id = forms.IntegerField(widget=forms.HiddenInput())
+
     class Meta:
         model = StockEntry
-        fields = ['product','qty','purchase_price','supplier','remarks']
+        fields = ['product', 'qty', 'purchase_price', 'supplier', 'remarks']
+        widgets = {
+            'product': Select2Widget(attrs={'style': 'width:100%'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Add a label showing name and SKU in the dropdown
+        self.fields['product'].queryset = Product.objects.all()
+        self.fields['product'].label_from_instance = lambda obj: f"{obj.name} ({obj.sku})"
+
+
+def product_search(request):
+    query = request.GET.get('q', '')
+    products = Product.objects.filter(name__icontains=query) | Product.objects.filter(sku__icontains=query)
+    results = []
+
+    for p in products[:10]:  # limit results
+        results.append({
+            'id': p.id,
+            'text': f"{p.name} ({p.sku})"
+        })
+
+    return JsonResponse({'results': results})
 
 class SaleForm(forms.ModelForm):
     class Meta:
@@ -27,19 +52,7 @@ class SaleItemForm(forms.ModelForm):
 
 
 class EmployeeForm(forms.ModelForm):
-    confirm_password = forms.CharField(widget=forms.PasswordInput)
-
     class Meta:
         model = Employee
-        fields = ['name', 'email', 'mob', 'username', 'password', 'confirm_password']
-        widgets = {
-            'password': forms.PasswordInput(),
-        }
+        fields = ['name', 'email', 'mob', 'image', 'age', 'address']
 
-    def clean(self):
-        cleaned_data = super().clean()
-        password = cleaned_data.get("password")
-        confirm_password = cleaned_data.get("confirm_password")
-
-        if password != confirm_password:
-            raise ValidationError("Passwords do not match!")
