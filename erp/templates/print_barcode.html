@@ -1,0 +1,23 @@
+<form method="POST">
+    {% csrf_token %}
+
+    <table border="1" cellpadding="5">
+        <tr>
+            <th>Select</th>
+            <th>Product</th>
+            <th>Barcode No</th>
+            <th>Quantity</th>
+        </tr>
+
+        {% for p in products %}
+        <tr>
+            <td><input type="checkbox" name="product_ids" value="{{ p.id }}"></td>
+            <td>{{ p.name }}</td>
+            <td>{{ p.barcode_no }}</td>
+            <td><input type="number" name="qty_{{ p.id }}" value="1" min="1" style="width:60px;"></td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <button type="submit">Print Selected Barcodes</button>
+</form>

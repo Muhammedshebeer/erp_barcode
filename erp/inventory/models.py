@@ -2,6 +2,10 @@ from django.contrib.auth.models import User
 from django.db import models
 from django.urls import reverse
 from django.utils import timezone
+from io import BytesIO
+from barcode import Code128
+from barcode.writer import ImageWriter
+from django.core.files import File
 from django.core.exceptions import ValidationError
 
 
@@ -56,17 +60,31 @@ class Product(models.Model):
         return reverse('product_detail', args=[self.pk])
 
     def save(self, *args, **kwargs):
-        # Auto-generate SKU if not provided
+
+        # Auto SKU generation
         if not self.sku:
             last_product = Product.objects.order_by('-id').first()
             if last_product and last_product.sku.startswith('JW'):
-                # extract the numeric part
                 last_number = int(last_product.sku[2:])
                 new_number = last_number + 1
             else:
                 new_number = 1
-            self.sku = f"JW{str(new_number).zfill(8)}"  # pad with leading zeros: JW00000001
+            self.sku = f"JW{str(new_number).zfill(8)}"
+
+        # Auto barcode generation
+        if not self.barcode:
+            self.barcode = self.sku  # use SKU as barcode number
+
         super().save(*args, **kwargs)
+
+        # Create barcode image after product has ID
+        if not self.barcode_image:
+            buffer = BytesIO()
+            barcode_obj = Code128(self.barcode, writer=ImageWriter())
+            barcode_obj.write(buffer)
+
+            filename = f"{self.sku}.png"
+            self.barcode_image.save(filename, File(buffer), save=True)
 
 class StockEntry(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='stock_entries')

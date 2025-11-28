@@ -14,6 +14,8 @@ urlpatterns = [
     path('ajax/product-search/', views.product_search, name='product_search'),
 
     path('sales/<int:pk>/detail-modal/', sale_detail_modal, name='sale_detail_modal'),
+path('print/barcodes/', views.print_multiple_barcodes, name='print_multiple_barcodes'),
+
 
     path('products/add/', views.product_add, name='product_add'),
     path('product/<int:pk>/', views.product_detail, name='product_detail'),

@@ -19,6 +19,11 @@ from django.conf import settings
 from django.core.serializers.json import DjangoJSONEncoder
 from decimal import Decimal
 from django.http import FileResponse
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
+from reportlab.lib.units import mm
+from django.http import HttpResponse
+
 
 
 def login_view(request):
@@ -122,23 +127,77 @@ def add_stock(request):
 
         product = Product.objects.get(id=product_id)
 
-        # Create manually because product is not in the form anymore
+        # Convert fields properly
+        qty = int(request.POST.get("qty"))
+        purchase_price = request.POST.get("purchase_price") or 0
+
+        # Create Stock Entry
         entry = StockEntry.objects.create(
             product=product,
-            qty=request.POST.get("qty"),
-            purchase_price=request.POST.get("purchase_price"),
+            qty=qty,
+            purchase_price=purchase_price,
             supplier_id=request.POST.get("supplier") or None,
             remarks=request.POST.get("remarks")
         )
 
-        # update product quantity
-        product.quantity = product.quantity + entry.qty
+        # Update product quantity
+        product.quantity = product.quantity + qty
         product.save()
 
         return redirect('product_list')
 
     form = StockEntryForm()
     return render(request, 'add_stock.html', {'form': form})
+
+
+def print_multiple_barcodes(request):
+    products = Product.objects.all()
+
+    if request.method != "POST":
+        return render(request, "print_barcode.html", {"products": products})
+
+    selected_ids = request.POST.getlist("product_ids")
+
+    response = HttpResponse(content_type="application/pdf")
+    response['Content-Disposition'] = 'inline; filename="barcodes.pdf"'
+
+    c = canvas.Canvas(response, pagesize=A4)
+
+    x = 10 * mm
+    y = 270 * mm
+
+    BARCODE_WIDTH = 38 * mm
+    BARCODE_HEIGHT = 25 * mm
+    GAP = 10 * mm
+
+    for pid in selected_ids:
+        p = Product.objects.get(id=pid)
+        qty = int(request.POST.get(f"qty_{pid}", 1))
+
+        for _ in range(qty):
+
+            # Draw barcode
+            c.drawImage(
+                p.barcode_image.path,
+                x, y,
+                width=BARCODE_WIDTH,
+                height=BARCODE_HEIGHT
+            )
+
+            # Draw text
+            c.setFont("Helvetica", 8)
+
+
+            # Move position
+            y -= (BARCODE_HEIGHT + GAP)
+
+            # New page when space ends
+            if y < 20 * mm:
+                c.showPage()
+                y = 270 * mm
+
+    c.save()
+    return response
 
 def product_search(request):
     q = request.GET.get('q', '')
